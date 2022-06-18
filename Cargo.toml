@@ -6,6 +6,7 @@ authors = ["rzru <rzzzzru@gmail.com>"]
 description = "This crate allows you to convert raster images to their symbolic versions"
 readme = "README.md"
 license = "MIT"
+repository = "https://github.com/rzru/symbolize"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
