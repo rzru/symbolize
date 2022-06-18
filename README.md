@@ -8,11 +8,15 @@ This crate allows you to convert raster images to their symbolic versions! Also 
 
 ## Usage as a crate
 
-TODO
+All needed information is available on [docs.rs](https://docs.rs/symbolize)
 
 ## Usage as binary
 
-TODO
+```
+cargo install symbolize
+
+symbolize --help
+```
 
 ## License
 [MIT](https://opensource.org/licenses/MIT)
