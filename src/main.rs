@@ -16,7 +16,7 @@ use symbolize::symbolize;
 )]
 struct Args {
     /// Path to the original picture
-    #[clap(short, long)]
+    #[clap(value_parser)]
     path: String,
 
     /// Defines scale of symbolized picture relatively to the original

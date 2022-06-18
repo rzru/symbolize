@@ -1,6 +1,8 @@
 //! This crate provides [`symbolize`] function that allows you to convert raster images to their symbolic versions.
 //! It supports scaling the [`symbolize`]d images as well as coloring them for terminals with RGB-support.
 //!
+//! [`SymbolizeResult`] is a wrapper that allows you to easy convert a result to [`Vec<String>`], [`Vec<u8>`] or [`String`]
+//!
 //! # Example usage:
 //!
 //! ```
@@ -35,11 +37,9 @@
 //! }
 //! ```
 //!
-//! [`SymbolizeResult`] is a wrapper that allows you to easy convert a result to [`Vec<String>`], [`Vec<u8>`] or [`String`]
-//!
 //! # Example output:
 //!
-//! ```
+//! ````
 //! @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 //! @@@@@@@@@@@@@@@@@@@@@@@@^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^@@@@@@@@@@@@@@@@@@@@@@@@
 //! @@@@@@@@@@@@@@@@@@@@@@^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^@@@@@@@@@@@@@@@@@@@@@@
@@ -90,7 +90,7 @@
 //! @@@@@@@@@@@@@@@@@@@@@@^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^@@@@@@@@@@@@@@@@@@@@@@
 //! @@@@@@@@@@@@@@@@@@@@@@@@^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^@@@@@@@@@@@@@@@@@@@@@@@@
 //! @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-//! ```
+//! ````
 
 use std::{
     collections::{hash_map::Entry, HashMap},
@@ -127,17 +127,17 @@ impl Into<Vec<String>> for SymbolizeResult {
 
 /// Determines whether the image should use colors for the rgb terminal.
 #[derive(Debug)]
-pub enum Colorize {
+pub enum ColorType {
     Bw,
     Rgb,
 }
 
-impl Into<Colorize> for bool {
-    fn into(self) -> Colorize {
+impl Into<ColorType> for bool {
+    fn into(self) -> ColorType {
         if self == true {
-            Colorize::Rgb
+            ColorType::Rgb
         } else {
-            Colorize::Bw
+            ColorType::Bw
         }
     }
 }
@@ -148,7 +148,7 @@ pub fn symbolize(
     scale: f32,
     symbols: &[char],
     filter_type: FilterType,
-    colorize: Colorize,
+    color_type: ColorType,
 ) -> Result<SymbolizeResult, Box<dyn Error>> {
     let mut image = open(path)?.into_rgb8();
     image = resize(
@@ -164,9 +164,9 @@ pub fn symbolize(
         let mut result_row = vec![];
         for pixel in row {
             let (symbol, average_pixel) = get_symbol_by_pixel(&colors_to_use, pixel)?;
-            let str_symbol = match colorize {
-                Colorize::Bw => symbol.to_string(),
-                Colorize::Rgb => {
+            let str_symbol = match color_type {
+                ColorType::Bw => symbol.to_string(),
+                ColorType::Rgb => {
                     format!(
                         "{}",
                         style(symbol.to_string()).with(Color::from((
