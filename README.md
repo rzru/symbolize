@@ -1,6 +1,6 @@
 # symbolize!
 
-This crate allows you to convert raster images to their symbolic versions! Also available as binary.
+This crate allows you to convert raster images into their symbolic versions! Also available as binary.
 
 ## Preview
 

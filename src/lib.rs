@@ -1,4 +1,4 @@
-//! This crate provides [`symbolize`] function that allows you to convert raster images to their symbolic versions.
+//! This crate provides [`symbolize`] function that allows you to convert raster images into their symbolic versions.
 //! It supports scaling the [`symbolize`]d images as well as coloring them for terminals with RGB-support.
 //!
 //! [`SymbolizeResult`] is a wrapper that allows you to easy convert a result to [`Vec<String>`], [`Vec<u8>`] or [`String`]

@@ -11,7 +11,7 @@ use symbolize::symbolize;
 #[clap(name = "symbolize!")]
 #[clap(author = "rzru <rzzzzru@gmail.com>")]
 #[clap(
-    about = "Converts raster images to their symbolic view",
+    about = "Converts raster images into their symbolic view",
     long_about = None
 )]
 struct Args {
