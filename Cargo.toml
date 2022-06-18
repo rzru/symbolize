@@ -1,6 +1,6 @@
 [package]
 name = "symbolize"
-version = "0.1.3"
+version = "0.1.4"
 edition = "2021"
 authors = ["rzru <rzzzzru@gmail.com>"]
 description = "This crate allows you to convert raster images into their symbolic versions"
