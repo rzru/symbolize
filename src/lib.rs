@@ -8,7 +8,7 @@
 //! ```
 //! use image::{imageops::FilterType};
 //! use std::{process, error::Error};
-//! use symbolize::{symbolize, Colorize};
+//! use symbolize::{symbolize, ColorType};
 //!
 //! fn main() -> Result<(), Box<dyn Error>> {
 //!     let result = symbolize(
@@ -18,7 +18,7 @@
 //!         // If the image has the most white pixels, the first character from the vector will be used for them, and so on.
 //!         &vec!['*', '#', '@', ' '],
 //!         FilterType::Nearest,
-//!         Colorize::Bw,
+//!         ColorType::Bw,
 //!     );
 //!
 //!     match result {
