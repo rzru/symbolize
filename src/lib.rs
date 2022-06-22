@@ -1,24 +1,33 @@
-//! This crate provides [`symbolize`] function that allows you to convert raster images into their symbolic versions.
+//! This crate provides [`symbolize`] function that allows you to convert bitmap images into fine text art.
 //! It supports scaling the [`symbolize`]d images as well as coloring them for terminals with RGB-support.
 //!
 //! [`SymbolizeResult`] is a wrapper that allows you to easy convert a result to [`Vec<String>`], [`Vec<u8>`] or [`String`]
 //!
+//! The "original_image" parameter provides an original image as a [`DynamicImage`]
+//!
+//! The "palette" parameter determines which characters will be used when converting the image.
+//! The symbols are arranged in descending order of the frequency of their appearance on the image.
+//!
+//! The "scale" parameter determines the size of the output image relative to the size of the original.
+//!
+//! The "filter_type" parameter defines what type of filtering will be used when scaling the image. For more info read [`FilterType`] docs.
+//!
+//! The "colorize" parameter determines whether the output should be colorized for RGB-terminals or not.
+//!
 //! # Example usage:
 //!
 //! ```
-//! use image::{imageops::FilterType};
+//! use image::{imageops::FilterType, open};
 //! use std::{process, error::Error};
-//! use symbolize::{symbolize, ColorType};
+//! use symbolize::symbolize;
 //!
 //! fn main() -> Result<(), Box<dyn Error>> {
 //!     let result = symbolize(
-//!         "./image.png",
-//!         0.1,
-//!         // Function will use these symbols for the main average colors.
-//!         // If the image has the most white pixels, the first character from the vector will be used for them, and so on.
+//!         open("./path/to/image.png")?
 //!         &vec!['*', '#', '@', ' '],
+//!         0.1,
 //!         FilterType::Nearest,
-//!         ColorType::Bw,
+//!         false,
 //!     );
 //!
 //!     match result {
@@ -40,56 +49,23 @@
 //! # Example output:
 //!
 //! ````
-//! @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-//! @@@@@@@@@@@@@@@@@@@@@@@@^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^@@@@@@@@@@@@@@@@@@@@@@@@
-//! @@@@@@@@@@@@@@@@@@@@@@^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^@@@@@@@@@@@@@@@@@@@@@@
-//! @@@@@@@@@@@@@@@@@@^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^@@@@@@@@@@@@@@@@@@
-//! @@@@@@@@@@@@@@@@^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^@@@@@@@@@@@@@@@@
-//! @@@@@@@@@@@@^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^&&&&^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^@@@@@@@@@@@@
-//! @@@@@@@@@@^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^&&&&^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^@@@@@@@@@@
-//! @@@@@@@@^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^&&&&&&^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^@@@@@@@@
-//! @@@@@@@@^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^&&&&&&&&^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^@@@@@@@@
-//! @@@@@@^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^&&&&&&&&^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^@@@@@@
-//! @@@@^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^&&&&&&&&&&&&^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^@@@@
-//! @@^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^&&&&&&&&&&&&^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^@@
-//! @@^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^&&&&&&&&&&&&&&&&^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^@@
-//! ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^&&&&&&&&&&&&&&&&^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-//! ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^&&&&&&&&&&&&&&&&^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-//! ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^&&&&^^&&&&&&&&&&&&&&^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-//! ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^&&&&&&&&&&&&&&&&&&&&&&&&^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-//! ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^&&&&&&&&&&&&&&&&&&&&&&&&^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-//! ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^&&&&&&&&&&&&&&&&&&&&&&&&&&&&^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-//! ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^&&&&&&&&&&&&&&&&&&&&&&&&&&&&^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-//! ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-//! ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-//! ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-//! ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-//! ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^&&&&&&&&&&&&&&&&^^^^^^^^&&&&&&&&&&&&&&&&^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-//! ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^&&&&&&&&&&&&&&^^^^^^^^^^^^&&&&&&&&&&&&&&^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-//! ^^^^^^^^^^^^^^^^^^^^^^^^^^^^&&&&&&&&&&&&&&&&^^^^^^^^^^^^&&&&&&&&&&&&&&&&^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-//! ^^^^^^^^^^^^^^^^^^^^^^^^^^^^&&&&&&&&&&&&&&^^^^^^^^^^^^^^^^&&&&&&&&&&&&&&^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-//! ^^^^^^^^^^^^^^^^^^^^^^^^^^&&&&&&&&&&&&&&&&^^^^^^^^^^^^^^^^&&&&&&&&&&&&&&&&^^^^^^^^^^^^^^^^^^^^^^^^^^
-//! ^^^^^^^^^^^^^^^^^^^^^^^^^^&&&&&&&&&&&&&&&&^^^^^^^^^^^^^^^^&&&&&&&&&&&&&&^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-//! ^^^^^^^^^^^^^^^^^^^^^^^^&&&&&&&&&&&&&&&&&&^^^^^^^^^^^^^^^^&&&&&&&&&&&&&&&&^^^^^^^^^^^^^^^^^^^^^^^^^^
-//! ^^^^^^^^^^^^^^^^^^^^^^^^&&&&&&&&&&&&&&&&&&^^^^^^^^^^^^^^^^&&&&&&&&&&&&&&&&&&^^^^^^^^^^^^^^^^^^^^^^^^
-//! ^^^^^^^^^^^^^^^^^^^^^^&&&&&&&&&&&&&&&&^^^^^^^^^^^^^^^^^^^^^^^^&&&&&&&&&&&&&&&&^^^^^^^^^^^^^^^^^^^^^^
-//! ^^^^^^^^^^^^^^^^^^^^&&&&&&&&&&&&^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^&&&&&&&&&&&&^^^^^^^^^^^^^^^^^^^^
-//! ^^^^^^^^^^^^^^^^^^^^&&&&&&&&^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^&&&&&&&&^^^^^^^^^^^^^^^^^^^^
-//! ^^^^^^^^^^^^^^^^^^&&&&&&^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^&&&&&&^^^^^^^^^^^^^^^^^^
-//! ^^^^^^^^^^^^^^^^^^&&^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^&&^^^^^^^^^^^^^^^^^^
-//! @@^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^@@
-//! @@^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^@@
-//! @@@@^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^@@@@
-//! @@@@@@^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^@@@@@@
-//! @@@@@@@@^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^@@@@@@@@
-//! @@@@@@@@^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^@@@@@@@@
-//! @@@@@@@@@@^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^@@@@@@@@@@
-//! @@@@@@@@@@@@^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^@@@@@@@@@@@@
-//! @@@@@@@@@@@@@@@@^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^@@@@@@@@@@@@@@@@
-//! @@@@@@@@@@@@@@@@@@^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^@@@@@@@@@@@@@@@@@@
-//! @@@@@@@@@@@@@@@@@@@@@@^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^@@@@@@@@@@@@@@@@@@@@@@
-//! @@@@@@@@@@@@@@@@@@@@@@@@^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^@@@@@@@@@@@@@@@@@@@@@@@@
-//! @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+//!                               @@  @@@@  @@                              
+//!                           @@  @@@@@@@@@@@@@@@@@@                        
+//!                     @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@                    
+//!                     @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@            @@      
+//!   @@  @@          @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@      @@@@      
+//!   @@  @@@@        @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@      @@@@  @@@@
+//! @@@@  @@@@    @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@  @@@@@@@@  
+//!   @@@@@@@@    @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@    @@@@@@@@  
+//!     @@@@@@  @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@    
+//!       @@@@  @@@@@@@@@@@@@@@@@@&&    @@@@&&&&  @@@@@@@@@@@@@@  @@        
+//!         @@@@@@@@@@@@@@@@@@@@@@&&    @@@@      @@@@@@@@@@@@@@@@@@        
+//!           @@@@@@@@@@@@@@@@@@@@      @@@@      @@@@@@@@@@@@@@@@@@        
+//!         @@@@@@##@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@####@@@@@@      
+//!           @@@@##  ####@@@@@@@@@@@@@@    @@@@@@@@@@####    ##@@@@        
+//!             @@  ##        ######################        ##  @@          
+//!               @@                                            @@          
+//!                                                           @@
 //! ````
 
 use std::{
@@ -101,7 +77,7 @@ use std::{
 use crossterm::style::{style, Color, Stylize};
 use image::{
     imageops::{resize, FilterType},
-    open, ImageBuffer, Rgb,
+    DynamicImage, Rgb, RgbImage,
 };
 
 /// Helper wrapper struct that provides some [`Into`] implementations for easier convertation
@@ -125,57 +101,40 @@ impl Into<Vec<String>> for SymbolizeResult {
     }
 }
 
-/// Determines whether the image should use colors for the rgb terminal.
-#[derive(Debug)]
-pub enum ColorType {
-    Bw,
-    Rgb,
-}
-
-impl Into<ColorType> for bool {
-    fn into(self) -> ColorType {
-        if self == true {
-            ColorType::Rgb
-        } else {
-            ColorType::Bw
-        }
-    }
-}
-
-/// Main function of this crate. Turns your raster image into it's symbolic representation.
+/// Main function of this crate. Turns your bitmap image into text art.
 pub fn symbolize(
-    path: &str,
+    original_image: DynamicImage,
     scale: f32,
-    symbols: &[char],
+    palette: &[char],
     filter_type: FilterType,
-    color_type: ColorType,
+    colorize: bool,
 ) -> Result<SymbolizeResult, Box<dyn Error>> {
-    let mut image = open(path)?.into_rgb8();
-    image = resize(
-        &image,
-        (image.width() as f32 * scale) as u32,
-        (image.height() as f32 * scale) as u32,
+    let original_image_rgb = original_image.into_rgb8();
+    let scaled_image = resize(
+        &original_image_rgb,
+        (original_image_rgb.width() as f32 * scale) as u32,
+        (original_image_rgb.height() as f32 * scale) as u32,
         filter_type,
     );
-    let colors_to_use = get_most_used_colours_with_symbols(&image, symbols);
+    let colors_to_use = get_most_used_colours_with_symbols(&scaled_image, palette);
 
     let mut result = vec![];
-    for row in image.rows() {
+    for row in scaled_image.rows() {
         let mut result_row = vec![];
         for pixel in row {
             let (symbol, average_pixel) = get_symbol_by_pixel(&colors_to_use, pixel)?;
-            let str_symbol = match color_type {
-                ColorType::Bw => symbol.to_string(),
-                ColorType::Rgb => {
-                    format!(
-                        "{}",
-                        style(symbol.to_string()).with(Color::from((
-                            average_pixel.0[0],
-                            average_pixel.0[1],
-                            average_pixel.0[2]
-                        )))
-                    )
-                }
+
+            let str_symbol = if colorize {
+                format!(
+                    "{}",
+                    style(symbol.to_string()).with(Color::from((
+                        average_pixel.0[0],
+                        average_pixel.0[1],
+                        average_pixel.0[2]
+                    )))
+                )
+            } else {
+                symbol.to_string()
             };
             result_row.push(str_symbol.clone());
             result_row.push(str_symbol);
@@ -199,10 +158,7 @@ impl PixelWithSymbol {
     }
 }
 
-fn get_most_used_colours_with_symbols(
-    image: &ImageBuffer<Rgb<u8>, Vec<u8>>,
-    symbols: &[char],
-) -> Vec<PixelWithSymbol> {
+fn get_most_used_colours_with_symbols(image: &RgbImage, symbols: &[char]) -> Vec<PixelWithSymbol> {
     let mut colors_uses: HashMap<&image::Rgb<u8>, usize> = HashMap::new();
     for pixel in image.pixels() {
         match colors_uses.entry(pixel) {

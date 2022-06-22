@@ -1,5 +1,5 @@
 use clap::Parser;
-use image::{imageops::FilterType, ImageError};
+use image::{imageops::FilterType, open, ImageError};
 use std::{
     io::{Error, ErrorKind},
     process,
@@ -11,7 +11,7 @@ use symbolize::symbolize;
 #[clap(name = "symbolize!")]
 #[clap(author = "rzru <rzzzzru@gmail.com>")]
 #[clap(
-    about = "Converts raster images into their symbolic view",
+    about = "converts bitmap images into text art",
     long_about = None
 )]
 struct Args {
@@ -24,12 +24,12 @@ struct Args {
     scale: f32,
 
     /// Defines symbols that will be used to fill the picture (in priority order)
-    #[clap(short, long, value_parser, default_value_t = String::from("*@#&"))]
-    symbols: String,
+    #[clap(short, long, value_parser)]
+    palette: String,
 
     /// Filter type. One of: nearest, triangle, catmull_rom, gaussian, lanczos3.
     /// More about differences: https://docs.rs/image/latest/image/imageops/enum.FilterType.html
-    #[clap(short, long, value_parser, default_value_t = String::from("triangle"))]
+    #[clap(short, long, value_parser, default_value = "nearest")]
     filter: String,
 
     /// Flag that shows should output be colorized for a terminal or not.
@@ -41,14 +41,14 @@ struct Args {
 fn main() -> Result<(), ImageError> {
     let args = Args::parse();
     let filter_type_wrapper: FilterTypeWrapper = args.filter.try_into()?;
-    let symbols: Vec<char> = args.symbols.chars().collect();
+    let palette: Vec<char> = args.palette.chars().collect();
 
     let result = symbolize(
-        &args.path,
+        open(args.path)?,
         args.scale,
-        &symbols,
+        &palette,
         filter_type_wrapper.0,
-        args.colorize.into(),
+        args.colorize,
     );
 
     match result {
