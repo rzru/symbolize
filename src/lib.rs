@@ -16,7 +16,7 @@
 //!
 //! # Example usage:
 //!
-//! ```
+//! ```ignore
 //! use image::{imageops::FilterType, open};
 //! use std::{process, error::Error};
 //! use symbolize::symbolize;
@@ -48,7 +48,7 @@
 //!
 //! # Example output:
 //!
-//! ````
+//! ```ignore
 //!                               @@  @@@@  @@                              
 //!                           @@  @@@@@@@@@@@@@@@@@@                        
 //!                     @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@                    
@@ -66,7 +66,7 @@
 //!             @@  ##        ######################        ##  @@          
 //!               @@                                            @@          
 //!                                                           @@
-//! ````
+//! ```
 
 use std::{
     collections::{hash_map::Entry, HashMap},
@@ -81,23 +81,35 @@ use image::{
 };
 
 /// Helper wrapper struct that provides some [`Into`] implementations for easier convertation
-pub struct SymbolizeResult(Vec<String>);
+pub struct SymbolizeResult(Vec<Vec<String>>);
 
 impl Into<String> for SymbolizeResult {
     fn into(self) -> String {
-        self.0.join("\n")
+        self.0
+            .iter()
+            .map(|row| row.join(""))
+            .collect::<Vec<String>>()
+            .join("\n")
     }
 }
 
 impl Into<Vec<u8>> for SymbolizeResult {
     fn into(self) -> Vec<u8> {
-        self.0.join("\n").into_bytes()
+        self.0
+            .iter()
+            .map(|row| row.join(""))
+            .collect::<Vec<String>>()
+            .join("\n")
+            .into_bytes()
     }
 }
 
 impl Into<Vec<String>> for SymbolizeResult {
     fn into(self) -> Vec<String> {
         self.0
+            .iter()
+            .map(|row| row.join(""))
+            .collect::<Vec<String>>()
     }
 }
 
@@ -109,6 +121,20 @@ pub fn symbolize(
     filter_type: FilterType,
     colorize: bool,
 ) -> Result<SymbolizeResult, Box<dyn Error>> {
+    if palette.is_empty() {
+        return Err(Box::new(io::Error::new(
+            io::ErrorKind::InvalidInput,
+            "pallete should contain at leasst one symbol, aborting",
+        )));
+    }
+
+    if scale < 0.0 {
+        return Err(Box::new(io::Error::new(
+            io::ErrorKind::InvalidInput,
+            "scale should be > 0, aborting",
+        )));
+    }
+
     let original_image_rgb = original_image.into_rgb8();
     let scaled_image = resize(
         &original_image_rgb,
@@ -140,7 +166,7 @@ pub fn symbolize(
             result_row.push(str_symbol);
         }
 
-        result.push(result_row.join(""))
+        result.push(result_row)
     }
 
     Ok(SymbolizeResult(result))
@@ -174,7 +200,10 @@ fn get_most_used_colours_with_symbols(image: &RgbImage, symbols: &[char]) -> Vec
     colours_uses_vec.sort_by_key(|(_, count)| *count);
 
     let (start, end) = (
-        colours_uses_vec.len() - symbols.len(),
+        colours_uses_vec
+            .len()
+            .checked_sub(symbols.len())
+            .unwrap_or(0),
         colours_uses_vec.len(),
     );
 
@@ -191,14 +220,14 @@ fn get_most_used_colours_with_symbols(image: &RgbImage, symbols: &[char]) -> Vec
 }
 
 fn get_symbol_by_pixel(
-    pixels_with_info: &[PixelWithSymbol],
+    pixels_with_symbols: &[PixelWithSymbol],
     pixel_to_compare: &Rgb<u8>,
 ) -> Result<(char, Rgb<u8>), io::Error> {
     let mut char = None;
     let mut rgb_pixel = None;
     let mut comparison = None;
 
-    for PixelWithSymbol { pixel, symbol } in pixels_with_info {
+    for PixelWithSymbol { pixel, symbol } in pixels_with_symbols {
         let pretendent_comparison = get_pixel_comparison(pixel_to_compare, pixel);
         if comparison.is_none() || pretendent_comparison < comparison.unwrap() {
             char = Some(*symbol);
@@ -221,4 +250,132 @@ fn get_pixel_comparison(first: &Rgb<u8>, second: &Rgb<u8>) -> usize {
     ((first.0[0] as i16 - second.0[0] as i16).abs()
         + (first.0[1] as i16 - second.0[1] as i16).abs()
         + (first.0[2] as i16 - second.0[2] as i16).abs()) as usize
+}
+
+#[cfg(test)]
+mod tests {
+    use image::{imageops::FilterType, open};
+
+    use crate::symbolize;
+
+    fn get_ferris() -> Vec<&'static str> {
+        vec![
+            "                                                                        ",
+            "                                                                        ",
+            "                                                                        ",
+            "                              @@  @@@@  @@                              ",
+            "                          @@  @@@@@@@@@@@@@@@@@@                        ",
+            "                    @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@                    ",
+            "                    @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@            @@      ",
+            "  @@  @@          @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@      @@@@      ",
+            "  @@  @@@@        @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@      @@@@  @@@@",
+            "@@@@  @@@@    @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@  @@@@@@@@  ",
+            "  @@@@@@@@    @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@    @@@@@@@@  ",
+            "    @@@@@@  @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@    ",
+            "      @@@@  @@@@@@@@@@@@@@@@@@&&    @@@@&&&&  @@@@@@@@@@@@@@  @@        ",
+            "        @@@@@@@@@@@@@@@@@@@@@@&&    @@@@      @@@@@@@@@@@@@@@@@@        ",
+            "          @@@@@@@@@@@@@@@@@@@@      @@@@      @@@@@@@@@@@@@@@@@@        ",
+            "        @@@@@@$$@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@$$$$@@@@@@      ",
+            "          @@@@$$  $$$$@@@@@@@@@@@@@@    @@@@@@@@@@$$$$    $$@@@@        ",
+            "            @@  $$        $$$$$$$$$$$$$$$$$$$$$$        $$  @@          ",
+            "              @@                                            @@          ",
+            "                                                          @@            ",
+            "                                                                        ",
+            "                                                                        ",
+            "                                                                        ",
+            "                                                                        ",
+        ]
+    }
+
+    fn get_colorized_ferris() -> &'static str {
+        "\u{1b}[38;2;0;0;0m@\u{1b}[39m\u{1b}[38;2;0;0;0m@\u{1b}[39m\u{1b}[38;2;0;0;0m@\u{1b}[39m\u{1b}[38;2;0;0;0m@\u{1b}[39m\u{1b}[38;2;0;0;0m@\u{1b}[39m\u{1b}[38;2;0;0;0m@\u{1b}[39m\u{1b}[38;2;0;0;0m@\u{1b}[39m\u{1b}[38;2;0;0;0m@\u{1b}[39m\u{1b}[38;2;0;0;0m@\u{1b}[39m\u{1b}[38;2;0;0;0m@\u{1b}[39m\u{1b}[38;2;0;0;0m@\u{1b}[39m\u{1b}[38;2;0;0;0m@\u{1b}[39m\u{1b}[38;2;0;0;0m@\u{1b}[39m\u{1b}[38;2;0;0;0m@\u{1b}[39m\u{1b}[38;2;0;0;0m@\u{1b}[39m\u{1b}[38;2;0;0;0m@\u{1b}[39m\u{1b}[38;2;0;0;0m@\u{1b}[39m\u{1b}[38;2;0;0;0m@\u{1b}[39m\u{1b}[38;2;0;0;0m@\u{1b}[39m\u{1b}[38;2;0;0;0m@\u{1b}[39m\u{1b}[38;2;0;0;0m@\u{1b}[39m\u{1b}[38;2;0;0;0m@\u{1b}[39m\u{1b}[38;2;0;0;0m@\u{1b}[39m\u{1b}[38;2;0;0;0m@\u{1b}[39m\n\u{1b}[38;2;0;0;0m@\u{1b}[39m\u{1b}[38;2;0;0;0m@\u{1b}[39m\u{1b}[38;2;0;0;0m@\u{1b}[39m\u{1b}[38;2;0;0;0m@\u{1b}[39m\u{1b}[38;2;0;0;0m@\u{1b}[39m\u{1b}[38;2;0;0;0m@\u{1b}[39m\u{1b}[38;2;0;0;0m@\u{1b}[39m\u{1b}[38;2;0;0;0m@\u{1b}[39m\u{1b}[38;2;247;76;0m$\u{1b}[39m\u{1b}[38;2;247;76;0m$\u{1b}[39m\u{1b}[38;2;247;76;0m$\u{1b}[39m\u{1b}[38;2;247;76;0m$\u{1b}[39m\u{1b}[38;2;247;76;0m$\u{1b}[39m\u{1b}[38;2;247;76;0m$\u{1b}[39m\u{1b}[38;2;247;76;0m$\u{1b}[39m\u{1b}[38;2;247;76;0m$\u{1b}[39m\u{1b}[38;2;0;0;0m@\u{1b}[39m\u{1b}[38;2;0;0;0m@\u{1b}[39m\u{1b}[38;2;0;0;0m@\u{1b}[39m\u{1b}[38;2;0;0;0m@\u{1b}[39m\u{1b}[38;2;0;0;0m@\u{1b}[39m\u{1b}[38;2;0;0;0m@\u{1b}[39m\u{1b}[38;2;0;0;0m@\u{1b}[39m\u{1b}[38;2;0;0;0m@\u{1b}[39m\n\u{1b}[38;2;247;76;0m$\u{1b}[39m\u{1b}[38;2;247;76;0m$\u{1b}[39m\u{1b}[38;2;0;0;0m@\u{1b}[39m\u{1b}[38;2;0;0;0m@\u{1b}[39m\u{1b}[38;2;0;0;0m@\u{1b}[39m\u{1b}[38;2;0;0;0m@\u{1b}[39m\u{1b}[38;2;247;76;0m$\u{1b}[39m\u{1b}[38;2;247;76;0m$\u{1b}[39m\u{1b}[38;2;247;76;0m$\u{1b}[39m\u{1b}[38;2;247;76;0m$\u{1b}[39m\u{1b}[38;2;247;76;0m$\u{1b}[39m\u{1b}[38;2;247;76;0m$\u{1b}[39m\u{1b}[38;2;247;76;0m$\u{1b}[39m\u{1b}[38;2;247;76;0m$\u{1b}[39m\u{1b}[38;2;247;76;0m$\u{1b}[39m\u{1b}[38;2;247;76;0m$\u{1b}[39m\u{1b}[38;2;247;76;0m$\u{1b}[39m\u{1b}[38;2;247;76;0m$\u{1b}[39m\u{1b}[38;2;0;0;0m@\u{1b}[39m\u{1b}[38;2;0;0;0m@\u{1b}[39m\u{1b}[38;2;247;76;0m$\u{1b}[39m\u{1b}[38;2;247;76;0m$\u{1b}[39m\u{1b}[38;2;0;0;0m@\u{1b}[39m\u{1b}[38;2;0;0;0m@\u{1b}[39m\n\u{1b}[38;2;247;76;0m$\u{1b}[39m\u{1b}[38;2;247;76;0m$\u{1b}[39m\u{1b}[38;2;247;76;0m$\u{1b}[39m\u{1b}[38;2;247;76;0m$\u{1b}[39m\u{1b}[38;2;247;76;0m$\u{1b}[39m\u{1b}[38;2;247;76;0m$\u{1b}[39m\u{1b}[38;2;247;76;0m$\u{1b}[39m\u{1b}[38;2;247;76;0m$\u{1b}[39m\u{1b}[38;2;247;76;0m$\u{1b}[39m\u{1b}[38;2;247;76;0m$\u{1b}[39m\u{1b}[38;2;247;76;0m$\u{1b}[39m\u{1b}[38;2;247;76;0m$\u{1b}[39m\u{1b}[38;2;247;76;0m$\u{1b}[39m\u{1b}[38;2;247;76;0m$\u{1b}[39m\u{1b}[38;2;247;76;0m$\u{1b}[39m\u{1b}[38;2;247;76;0m$\u{1b}[39m\u{1b}[38;2;247;76;0m$\u{1b}[39m\u{1b}[38;2;247;76;0m$\u{1b}[39m\u{1b}[38;2;247;76;0m$\u{1b}[39m\u{1b}[38;2;247;76;0m$\u{1b}[39m\u{1b}[38;2;247;76;0m$\u{1b}[39m\u{1b}[38;2;247;76;0m$\u{1b}[39m\u{1b}[38;2;247;76;0m$\u{1b}[39m\u{1b}[38;2;247;76;0m$\u{1b}[39m\n\u{1b}[38;2;0;0;0m@\u{1b}[39m\u{1b}[38;2;0;0;0m@\u{1b}[39m\u{1b}[38;2;247;76;0m$\u{1b}[39m\u{1b}[38;2;247;76;0m$\u{1b}[39m\u{1b}[38;2;247;76;0m$\u{1b}[39m\u{1b}[38;2;247;76;0m$\u{1b}[39m\u{1b}[38;2;247;76;0m$\u{1b}[39m\u{1b}[38;2;247;76;0m$\u{1b}[39m\u{1b}[38;2;247;76;0m$\u{1b}[39m\u{1b}[38;2;247;76;0m$\u{1b}[39m\u{1b}[38;2;0;0;0m@\u{1b}[39m\u{1b}[38;2;0;0;0m@\u{1b}[39m\u{1b}[38;2;247;76;0m$\u{1b}[39m\u{1b}[38;2;247;76;0m$\u{1b}[39m\u{1b}[38;2;0;0;0m@\u{1b}[39m\u{1b}[38;2;0;0;0m@\u{1b}[39m\u{1b}[38;2;247;76;0m$\u{1b}[39m\u{1b}[38;2;247;76;0m$\u{1b}[39m\u{1b}[38;2;247;76;0m$\u{1b}[39m\u{1b}[38;2;247;76;0m$\u{1b}[39m\u{1b}[38;2;247;76;0m$\u{1b}[39m\u{1b}[38;2;247;76;0m$\u{1b}[39m\u{1b}[38;2;0;0;0m@\u{1b}[39m\u{1b}[38;2;0;0;0m@\u{1b}[39m\n\u{1b}[38;2;0;0;0m@\u{1b}[39m\u{1b}[38;2;0;0;0m@\u{1b}[39m\u{1b}[38;2;0;0;0m@\u{1b}[39m\u{1b}[38;2;0;0;0m@\u{1b}[39m\u{1b}[38;2;165;43;0m&\u{1b}[39m\u{1b}[38;2;165;43;0m&\u{1b}[39m\u{1b}[38;2;165;43;0m&\u{1b}[39m\u{1b}[38;2;165;43;0m&\u{1b}[39m\u{1b}[38;2;247;76;0m$\u{1b}[39m\u{1b}[38;2;247;76;0m$\u{1b}[39m\u{1b}[38;2;247;76;0m$\u{1b}[39m\u{1b}[38;2;247;76;0m$\u{1b}[39m\u{1b}[38;2;0;0;0m@\u{1b}[39m\u{1b}[38;2;0;0;0m@\u{1b}[39m\u{1b}[38;2;247;76;0m$\u{1b}[39m\u{1b}[38;2;247;76;0m$\u{1b}[39m\u{1b}[38;2;165;43;0m&\u{1b}[39m\u{1b}[38;2;165;43;0m&\u{1b}[39m\u{1b}[38;2;0;0;0m@\u{1b}[39m\u{1b}[38;2;0;0;0m@\u{1b}[39m\u{1b}[38;2;247;76;0m$\u{1b}[39m\u{1b}[38;2;247;76;0m$\u{1b}[39m\u{1b}[38;2;0;0;0m@\u{1b}[39m\u{1b}[38;2;0;0;0m@\u{1b}[39m\n\u{1b}[38;2;0;0;0m@\u{1b}[39m\u{1b}[38;2;0;0;0m@\u{1b}[39m\u{1b}[38;2;0;0;0m@\u{1b}[39m\u{1b}[38;2;0;0;0m@\u{1b}[39m\u{1b}[38;2;0;0;0m@\u{1b}[39m\u{1b}[38;2;0;0;0m@\u{1b}[39m\u{1b}[38;2;0;0;0m@\u{1b}[39m\u{1b}[38;2;0;0;0m@\u{1b}[39m\u{1b}[38;2;0;0;0m@\u{1b}[39m\u{1b}[38;2;0;0;0m@\u{1b}[39m\u{1b}[38;2;0;0;0m@\u{1b}[39m\u{1b}[38;2;0;0;0m@\u{1b}[39m\u{1b}[38;2;0;0;0m@\u{1b}[39m\u{1b}[38;2;0;0;0m@\u{1b}[39m\u{1b}[38;2;0;0;0m@\u{1b}[39m\u{1b}[38;2;0;0;0m@\u{1b}[39m\u{1b}[38;2;0;0;0m@\u{1b}[39m\u{1b}[38;2;0;0;0m@\u{1b}[39m\u{1b}[38;2;0;0;0m@\u{1b}[39m\u{1b}[38;2;0;0;0m@\u{1b}[39m\u{1b}[38;2;0;0;0m@\u{1b}[39m\u{1b}[38;2;0;0;0m@\u{1b}[39m\u{1b}[38;2;0;0;0m@\u{1b}[39m\u{1b}[38;2;0;0;0m@\u{1b}[39m\n\u{1b}[38;2;0;0;0m@\u{1b}[39m\u{1b}[38;2;0;0;0m@\u{1b}[39m\u{1b}[38;2;0;0;0m@\u{1b}[39m\u{1b}[38;2;0;0;0m@\u{1b}[39m\u{1b}[38;2;0;0;0m@\u{1b}[39m\u{1b}[38;2;0;0;0m@\u{1b}[39m\u{1b}[38;2;0;0;0m@\u{1b}[39m\u{1b}[38;2;0;0;0m@\u{1b}[39m\u{1b}[38;2;0;0;0m@\u{1b}[39m\u{1b}[38;2;0;0;0m@\u{1b}[39m\u{1b}[38;2;0;0;0m@\u{1b}[39m\u{1b}[38;2;0;0;0m@\u{1b}[39m\u{1b}[38;2;0;0;0m@\u{1b}[39m\u{1b}[38;2;0;0;0m@\u{1b}[39m\u{1b}[38;2;0;0;0m@\u{1b}[39m\u{1b}[38;2;0;0;0m@\u{1b}[39m\u{1b}[38;2;0;0;0m@\u{1b}[39m\u{1b}[38;2;0;0;0m@\u{1b}[39m\u{1b}[38;2;0;0;0m@\u{1b}[39m\u{1b}[38;2;0;0;0m@\u{1b}[39m\u{1b}[38;2;0;0;0m@\u{1b}[39m\u{1b}[38;2;0;0;0m@\u{1b}[39m\u{1b}[38;2;0;0;0m@\u{1b}[39m\u{1b}[38;2;0;0;0m@\u{1b}[39m"
+    }
+
+    #[test]
+    fn renders_ferris_as_vec_of_strings() {
+        let image = open("./test-data/ferris.png").unwrap();
+        let result: Vec<String> = symbolize(
+            image,
+            0.03,
+            &vec![' ', '@', '$', '&'],
+            FilterType::Nearest,
+            false,
+        )
+        .unwrap()
+        .into();
+
+        assert_eq!(result, get_ferris());
+    }
+
+    #[test]
+    fn renders_colorized_ferris_as_string() {
+        let image = open("./test-data/ferris.png").unwrap();
+        let result: String = symbolize(
+            image,
+            0.01,
+            &vec![' ', '@', '$', '&'],
+            FilterType::Nearest,
+            true,
+        )
+        .unwrap()
+        .into();
+
+        assert_eq!(result, get_colorized_ferris());
+    }
+
+    #[test]
+    fn renders_ferris_as_string() {
+        let image = open("./test-data/ferris.png").unwrap();
+        let result: String = symbolize(
+            image,
+            0.03,
+            &vec![' ', '@', '$', '&'],
+            FilterType::Nearest,
+            false,
+        )
+        .unwrap()
+        .into();
+
+        assert_eq!(result, get_ferris().join("\n"));
+    }
+
+    #[test]
+    fn renders_ferris_as_byteslice() {
+        let image = open("./test-data/ferris.png").unwrap();
+        let result: Vec<u8> = symbolize(
+            image,
+            0.03,
+            &vec![' ', '@', '$', '&'],
+            FilterType::Nearest,
+            false,
+        )
+        .unwrap()
+        .into();
+
+        assert_eq!(result, get_ferris().join("\n").into_bytes());
+    }
+
+    #[test]
+    fn returns_error_if_no_palette_passed() {
+        let image = open("./test-data/ferris.png").unwrap();
+        let result = symbolize(image, 0.03, &vec![], FilterType::Nearest, false);
+
+        assert!(result.is_err());
+        assert_eq!(
+            result.err().unwrap().to_string(),
+            "pallete should contain at leasst one symbol, aborting"
+        );
+    }
+
+    #[test]
+    fn returns_error_if_scale_less_than_zero() {
+        let image = open("./test-data/ferris.png").unwrap();
+        let result = symbolize(image, -0.03, &vec![' '], FilterType::Nearest, false);
+
+        assert!(result.is_err());
+        assert_eq!(
+            result.err().unwrap().to_string(),
+            "scale should be > 0, aborting"
+        );
+    }
 }

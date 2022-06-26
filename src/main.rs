@@ -72,31 +72,16 @@ impl TryInto<FilterTypeWrapper> for String {
     type Error = Error;
 
     fn try_into(self) -> Result<FilterTypeWrapper, Self::Error> {
-        let self_str = self.as_str();
-
-        if self_str == "nearest" {
-            return Ok(FilterTypeWrapper(FilterType::Nearest));
+        match self.as_str() {
+            "nearest" => Ok(FilterTypeWrapper(FilterType::Nearest)),
+            "triangle" => Ok(FilterTypeWrapper(FilterType::Triangle)),
+            "catmull_rom" => Ok(FilterTypeWrapper(FilterType::CatmullRom)),
+            "gaussian" => Ok(FilterTypeWrapper(FilterType::Gaussian)),
+            "lanczos3" => Ok(FilterTypeWrapper(FilterType::Lanczos3)),
+            _ => Err(Error::new(
+                ErrorKind::InvalidData,
+                "unknown filter type, aborting",
+            )),
         }
-
-        if self_str == "triangle" {
-            return Ok(FilterTypeWrapper(FilterType::Triangle));
-        }
-
-        if self_str == "catmull_rom" {
-            return Ok(FilterTypeWrapper(FilterType::CatmullRom));
-        }
-
-        if self_str == "gaussian" {
-            return Ok(FilterTypeWrapper(FilterType::Gaussian));
-        }
-
-        if self_str == "lanczos3" {
-            return Ok(FilterTypeWrapper(FilterType::Lanczos3));
-        }
-
-        Err(Error::new(
-            ErrorKind::InvalidData,
-            "unknown filter type, aborting",
-        ))
     }
 }
