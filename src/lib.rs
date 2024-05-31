@@ -81,7 +81,7 @@ use image::{
 };
 
 /// Helper wrapper struct that provides some [`Into`] implementations for easier convertation
-pub struct SymbolizeResult(Vec<Vec<String>>);
+pub struct SymbolizeResult(pub Vec<Vec<String>>);
 
 impl Into<String> for SymbolizeResult {
     fn into(self) -> String {
